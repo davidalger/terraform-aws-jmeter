@@ -20,7 +20,7 @@ resource "aws_instance" "jmeter_instance" {
   })
 
   associate_public_ip_address = true
-  vpc_security_group_ids      = var.security_groups
+  vpc_security_group_ids      = concat([aws_security_group.jmeter_instance.id], var.security_groups)
 
   root_block_device {
     delete_on_termination = true
@@ -42,6 +42,36 @@ resource "aws_instance" "jmeter_instance" {
   }
 
   provisioner "remote-exec" {
-    script = "startup-script.sh"
+    script = "${path.module}/startup-script.sh"
+  }
+}
+
+resource "aws_security_group" "jmeter_instance" {
+  name   = "${var.name}-ec2-jmeter"
+  vpc_id = var.vpc_id
+  tags   = var.tags
+
+  ingress {
+    description = "Allow ICMP ingress from trusted IP ranges"
+    from_port   = -1
+    to_port     = -1
+    protocol    = "icmp"
+    cidr_blocks = var.trusted_ip_ranges
+  }
+
+  ingress {
+    description = "Allow SSH ingress from trusted IP ranges"
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = var.trusted_ip_ranges
+  }
+
+  egress {
+    description = "Allow all outbound traffic"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
   }
 }
