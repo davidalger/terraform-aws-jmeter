@@ -7,6 +7,7 @@ APACHE_MAVEN=$(mktemp -d -t apache-mavenXXXXXX)
 
 sudo yum install -y epel-release
 sudo yum install -y \
+    xauth \
     java \
     bc \
     unzip \
