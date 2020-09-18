@@ -1,3 +1,65 @@
+locals {
+  # Rendered user-data can be fetched and reviewed on the resulting instance via following:
+  #
+  #   curl -s http://169.254.169.254/latest/user-data | gunzip -c | tail -n1 | jq -r
+  #
+  user_data = {
+    fqdn         = var.name
+    hostname     = var.name
+    disable_root = true
+    ssh_pwauth   = false
+
+    users = [{
+      name                = var.instance_user
+      groups              = ["wheel", "adm", "systemd-journal"]
+      sudo                = ["ALL=(ALL) NOPASSWD:ALL"]
+      ssh_authorized_keys = var.authorized_keys
+    }]
+
+    runcmd = [
+      # Disable ability to login via SSH as root user
+      "perl -i -pe 's/#PermitRootLogin .*/PermitRootLogin no/' /etc/ssh/sshd_config",
+      "systemctl reload sshd.service",
+
+      # Install packages which must be installed after epel-release 
+      "yum install -y jq",
+
+      # Install jmeter and all it's dependencies as the operating user
+      "sudo -i -u ${var.instance_user} /usr/local/bin/setup-jmeter.sh",
+    ]
+
+    packages = [
+      "epel-release", # required for installing things like fail2ban
+      "perl",         # required for adjusting sshd_config on startup
+    ]
+
+    write_files = [for file in local.instance_files : {
+      path        = "/${trimprefix(file.path, "/")}"
+      owner       = lookup(file, "owner", "root:root")
+      permissions = lookup(file, "permissions", "0600")
+      encoding    = lookup(file, "encoding", "base64")
+      content = lookup(
+        file,
+        "content",
+        lookup(file, "content", "") == "" ? filebase64("${abspath(path.root)}/files/${file.path}") : ""
+      )
+    }]
+  }
+
+  instance_files = [
+    {
+      path        = "/etc/profile.d/boilerplate.sh"
+      permissions = "0755"
+      content     = filebase64("${path.module}/files/profile.d/boilerplate.sh")
+    },
+    {
+      path        = "/usr/local/bin/setup-jmeter.sh"
+      permissions = "0755"
+      content     = filebase64("${path.module}/files/setup-jmeter.sh")
+    },
+  ]
+}
+
 data "aws_ami" "centos" {
   most_recent = true
   owners      = ["aws-marketplace"]
@@ -10,14 +72,11 @@ data "aws_ami" "centos" {
 }
 
 resource "aws_instance" "jmeter_instance" {
-  ami           = data.aws_ami.centos.image_id
-  instance_type = var.instance_type
-  key_name      = var.key_name
-  subnet_id     = var.subnet_id
-
-  tags = merge(var.tags, {
-    Name = var.name
-  })
+  ami              = data.aws_ami.centos.image_id
+  instance_type    = var.instance_type
+  user_data_base64 = base64gzip("#cloud-config\n${jsonencode(local.user_data)}")
+  subnet_id        = var.subnet_id
+  tags             = merge(var.tags, { Name = var.name })
 
   associate_public_ip_address = true
   vpc_security_group_ids      = concat([aws_security_group.jmeter_instance.id], var.security_groups)
@@ -25,29 +84,16 @@ resource "aws_instance" "jmeter_instance" {
   root_block_device {
     delete_on_termination = true
   }
+}
 
-  connection {
-    user = "centos"
-    host = self.public_ip
-  }
-
-  provisioner "remote-exec" {
-    inline = [
-      <<-EOT
-        set -x
-        sudo hostname "${var.name}"
-        echo "${var.name}" | sudo tee /etc/hostname
-      EOT
-    ]
-  }
-
-  provisioner "remote-exec" {
-    script = "${path.module}/startup-script.sh"
-  }
+resource "aws_eip" "jmeter_instance" {
+  instance = aws_instance.jmeter_instance.id
+  vpc      = true
+  tags     = merge(var.tags, { Name = var.name })
 }
 
 resource "aws_security_group" "jmeter_instance" {
-  name   = "${var.name}-ec2-jmeter"
+  name   = var.name
   vpc_id = var.vpc_id
   tags   = var.tags
 

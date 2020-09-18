@@ -20,13 +20,18 @@ variable "security_groups" {
   default     = []
 }
 
-variable "key_name" {
-  type = string
-}
-
 variable "instance_type" {
   type    = string
   default = "c5.2xlarge"
+}
+
+variable "instance_user" {
+  type    = string
+  default = "jmeter"
+}
+
+variable "authorized_keys" {
+  type = list(any)
 }
 
 variable "trusted_ip_ranges" {
