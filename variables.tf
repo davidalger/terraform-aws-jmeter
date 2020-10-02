@@ -30,6 +30,11 @@ variable "instance_user" {
   default = "jmeter"
 }
 
+variable "jmeter_version" {
+  type    = string
+  default = "5.1.1"
+}
+
 variable "authorized_keys" {
   type = list(any)
 }

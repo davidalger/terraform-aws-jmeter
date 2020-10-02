@@ -55,7 +55,11 @@ locals {
     {
       path        = "/usr/local/bin/setup-jmeter.sh"
       permissions = "0755"
-      content     = filebase64("${path.module}/files/setup-jmeter.sh")
+      content     = base64encode(replace(
+        file("${path.module}/files/setup-jmeter.sh"),
+        "/JMETER_VERSION=.*/",
+        "JMETER_VERSION=${var.jmeter_version}",
+      ))
     },
   ]
 }
