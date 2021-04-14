@@ -65,13 +65,22 @@ locals {
 }
 
 data "aws_ami" "centos" {
+  owners      = ["679593333241"]
   most_recent = true
-  owners      = ["aws-marketplace"]
 
-  ## CentOS Linux 7 x86_64 HVM EBS ENA 1804_2
   filter {
-    name   = "product-code"
-    values = ["aw0evgkw8e5c1q413zgy5pjce"]
+    name   = "name"
+    values = ["CentOS Linux 7 x86_64 HVM EBS *"]
+  }
+
+  filter {
+    name   = "architecture"
+    values = ["x86_64"]
+  }
+
+  filter {
+    name   = "root-device-type"
+    values = ["ebs"]
   }
 }
 
