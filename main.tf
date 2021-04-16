@@ -65,12 +65,12 @@ locals {
 }
 
 data "aws_ami" "centos" {
-  owners      = ["679593333241"]
+  owners      = ["125523088429"]
   most_recent = true
 
   filter {
     name   = "name"
-    values = ["CentOS Linux 7 x86_64 HVM EBS *"]
+    values = ["CentOS 7 (x86_64) - with Updates HVM *"]
   }
 
   filter {
