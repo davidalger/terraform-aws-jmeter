@@ -70,17 +70,7 @@ data "aws_ami" "centos" {
 
   filter {
     name   = "name"
-    values = ["CentOS 7 (x86_64) - with Updates HVM *"]
-  }
-
-  filter {
-    name   = "architecture"
-    values = ["x86_64"]
-  }
-
-  filter {
-    name   = "root-device-type"
-    values = ["ebs"]
+    values = ["CentOS 7.9.2009 x86_64"]
   }
 }
 
