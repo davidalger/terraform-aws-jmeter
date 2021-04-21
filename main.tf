@@ -53,9 +53,14 @@ locals {
       content     = filebase64("${path.module}/files/profile.d/boilerplate.sh")
     },
     {
+      path        = "/tmp/jmeter.jmx"
+      permissions = "0644"
+      content     = filebase64(var.jmeter_scenario)
+    },
+    {
       path        = "/usr/local/bin/setup-jmeter.sh"
       permissions = "0755"
-      content     = base64encode(replace(
+      content = base64encode(replace(
         file("${path.module}/files/setup-jmeter.sh"),
         "/JMETER_VERSION=.*/",
         "JMETER_VERSION=${var.jmeter_version}",
@@ -65,12 +70,14 @@ locals {
 }
 
 data "aws_ami" "centos" {
-  owners      = ["125523088429"]
+  owners      = var.instance_owner
   most_recent = true
-
-  filter {
-    name   = "name"
-    values = ["CentOS 7.9.2009 x86_64"]
+  dynamic "filter" {
+    for_each = var.instance_filter
+    content {
+      name   = lookup(filter.value, "name", "name")
+      values = lookup(filter.value, "values", [])
+    }
   }
 }
 
